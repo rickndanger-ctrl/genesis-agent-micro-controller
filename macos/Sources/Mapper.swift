@@ -329,4 +329,3 @@ final class HIDLink {
         if action != "none" {runAction(action)}
     }
 }
-
