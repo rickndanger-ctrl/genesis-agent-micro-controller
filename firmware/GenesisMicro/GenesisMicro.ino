@@ -9,6 +9,7 @@
 #include "Attention.h"
 #include "Completion.h"
 #include "MatrixAnimation.h"
+#include "CompletionBell.h"
 #include "SlotNavigation.h"
 #include "FrameDecoder.h"
 #include "BoardConfig.h"
@@ -64,6 +65,8 @@ bool soundEnabled = true, buzzerReady = false;
 bool talkAfterSelect = true;
 uint32_t beepStarted = 0, testStarted = 0, alertCount = 0;
 bool beeping = false, testing = false;
+bool completionRinging=false;
+uint32_t completionBellStarted=0;
 uint8_t attentionMask() {
   uint8_t mask = 0;
   for (int i=0;i<6;++i) if (slotBrightness[i]>0 && needsAttention(slotColor[i])) mask |= 1<<i;
@@ -75,10 +78,12 @@ void startBeep() {
 void updateBuzzer() {
   uint32_t elapsed=millis()-beepStarted;
   if(!soundEnabled || elapsed>=240) beeping=false;
-  bool on=beeping && (elapsed<80 || elapsed>=160);
-  if(testing && soundEnabled && buzzerReady) on=(millis()-testStarted)<3000 && (millis()-testStarted)%600<180;
-  static bool wasOn=false;
-  if(on!=wasOn) {ledcWriteTone(BuzzerPin,on?2700:0);wasOn=on;}
+  if(!soundEnabled || millis()-completionBellStarted>=420) completionRinging=false;
+  uint16_t tone=completionRinging?CompletionBell::tone(millis()-completionBellStarted):0;
+  if(beeping) tone=(elapsed<80 || elapsed>=160)?2700:0;
+  if(testing && soundEnabled && buzzerReady) tone=(millis()-testStarted)<3000 && (millis()-testStarted)%600<180?2700:0;
+  static uint16_t previousTone=0;
+  if(tone!=previousTone && buzzerReady) {ledcWriteTone(BuzzerPin,tone);previousTone=tone;}
 }
 bool paintNeeded = true;
 void startTest() {testing=true;testStarted=millis();++testCount;paintNeeded=true;matrixAnimation.wake(millis());}
@@ -147,7 +152,7 @@ void switchControllerApp() {
   heldAgent=-1;knobGesture=KnobGesture{};codexGesture=CodexGesture{};
   mode=Agents;
 claudeMode=!claudeMode;claudeSeen=false;hostSeen=false;lastHost=0;selected=0;agentMenuIndex=0;actionIndex=0;
-memset(slotColor,0,sizeof(slotColor));attention=AttentionState{};completion=CompletionState{};beeping=false;testing=false;
+memset(slotColor,0,sizeof(slotColor));attention=AttentionState{};completion=CompletionState{};beeping=false;completionRinging=false;testing=false;
 if(!claudeMode) {memcpy(slotColor,codexColor,sizeof(slotColor));memcpy(slotBrightness,codexBrightness,sizeof(slotBrightness));}
 JsonDocument notice;notice["m"]="genesis.input";notice["p"]["k"]="MODE";notice["p"]["act"]=1;notice["p"]["mode"]=claudeMode?"claude":"codex";sendJson(notice);paintNeeded=true;
 }
@@ -165,7 +170,7 @@ void handleMessage(const char *bytes, size_t size) {
   JsonDocument reply; reply["id"] = request["id"];
   if (!strcmp(method,"device.status")) {
     auto result = reply["result"].to<JsonObject>();
-    result["version"] = "v0.2.15-genesis";
+    result["version"] = "v0.2.16-genesis";
     result["profile_index"] = 0; result["layer_index"] = 1;
     result["controller_mode"] = claudeMode?"claude":"codex";
     result["adapter"] = "Genesis Mini USB prototype";
@@ -201,7 +206,7 @@ void handleMessage(const char *bytes, size_t size) {
     if(params["test_alert"]|false) startTest();
     reply["result"]["ok"]=1;
   } else if (!strcmp(method,"sys.version")) {
-    reply["result"]["version"] = "v0.2.15-genesis";
+    reply["result"]["version"] = "v0.2.16-genesis";
   } else if (!strcmp(method,"v.oai.thstatus") || !strcmp(method,"genesis.claude.status")) {
     bool fromClaude=!strcmp(method,"genesis.claude.status");
     if(!fromClaude && params.is<JsonArray>()) {
@@ -222,7 +227,7 @@ void handleMessage(const char *bytes, size_t size) {
         if (!item["b"].isNull()) slotBrightness[id] = constrain(item["b"].as<float>(), 0.0f, 1.0f);
         if(oldColor!=slotColor[id] || oldBrightness!=slotBrightness[id])paintNeeded=true;
         if(attention.update(id,slotColor[id],slotBrightness[id])) newAttention=true;
-        if(completion.update(id,slotColor[id],slotBrightness[id],millis())) ++completionCount;
+        if(completion.update(id,slotColor[id],slotBrightness[id],millis())) {++completionCount;if(soundEnabled && buzzerReady) {completionRinging=true;completionBellStarted=millis();}}
       }
     }
     if(newAttention) {++alertCount;startBeep();}
@@ -380,7 +385,7 @@ void loop() {
   static bool previousReady=false;
   bool ready=hid.ready();if(ready!=previousReady) {paintNeeded=true;previousReady=ready;if(!ready){hostSeen=false;completion=CompletionState{};}}
   if(claudeMode && claudeSeen && millis()-lastClaude>6000) {claudeSeen=false;memset(slotColor,0,sizeof(slotColor));completion=CompletionState{};paintNeeded=true;}
-  if(!ready) beeping=false;
+  if(!ready) {beeping=false;completionRinging=false;}
   updateBuzzer();
   if(testing && millis()-testStarted>=3000) {testing=false;paintNeeded=true;}
   if(millis()-painted>60) {

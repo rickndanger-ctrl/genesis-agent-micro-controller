@@ -43,6 +43,15 @@ final class ClaudeAccess {
                 }
             }
         }
+        let headers=nodes.filter {text($0).hasSuffix(suffix)}
+        let buttons=nodes.filter {value($0,kAXRoleAttribute) as? String == kAXButtonRole}
+        if let state=ClaudeActivity.activeState(headerCount:headers.count,
+            stopCount:buttons.filter{text($0)=="Stop"}.count,
+            sendCount:buttons.filter{text($0)=="Send"}.count), let header=headers.first {
+            let title=String(text(header).dropLast(suffix.count))
+            result.removeAll {$0.title==title}
+            result.append(Session(title:title,state:state))
+        }
         return result
     }
     func press(_ e: AXUIElement) -> Bool {

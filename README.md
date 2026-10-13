@@ -72,3 +72,7 @@ This project was tested on one Genesis Mini and one Apple Silicon Mac. The perso
 ### Claude dictation and forked chats
 
 In Claude dictation settings, turn **Hold to record OFF**. The controller uses one click to start and another to stop. For a fork missing from the assignment list, open it in Claude and click Refresh sessions. Keep its sidebar entry visible when switching back to it.
+
+### Completion lights and bell
+
+Version 0.4.2 adds working/finished detection for the open Claude fork and a short completion bell. Keep that chat open for the Stop/Send fallback. The bell follows the controller’s Sound ON/OFF setting; the matrix keeps the chat’s assigned color. Upgrade the app and flash the included firmware to enable both fixes.

@@ -10,3 +10,6 @@ done
 xcrun swiftc "$ROOT/macos/Sources/CodexSlotTypes.swift" "$ROOT/macos/tests/main.swift" -o "$ROOT/build/tests/slot-types"
 "$ROOT/build/tests/slot-types"
 python3 -m unittest discover -s "$ROOT/tests" -p 'test_*.py'
+
+xcrun swiftc "$ROOT/macos/Sources/ClaudeActivity.swift" "$ROOT/tests/activity/main.swift" -o "$ROOT/build/tests/activity"
+"$ROOT/build/tests/activity"
