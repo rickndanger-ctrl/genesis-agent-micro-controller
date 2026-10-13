@@ -20,3 +20,7 @@ Keep the backup .bin and matching JSON receipt from ~/GenesisBackups. To restore
 ## Custom changes
 
 Use docs/BUILD.md. Change only requested behavior. Preserve the existing working installation until the replacement builds and tests pass. BOOT/RESET and physical testing require the user's participation. Do not replace Codex or Claude app binaries, extract credentials, or alter app security settings to work around integration limitations.
+
+### Claude dictation and forked chats
+
+In Claude dictation settings, turn **Hold to record OFF**. The controller uses one click to start and another to stop. For a fork missing from the assignment list, open it in Claude and click Refresh sessions. Keep its sidebar entry visible when switching back to it.

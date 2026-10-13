@@ -30,7 +30,20 @@ final class ClaudeAccess {
             for state in states where label.hasPrefix(state+" ") {
                 result.append(Session(title:String(label.dropFirst(state.count+1)),state:state));break
             }
-        }; return result
+        }
+        // An open fork may lack a recognized status prefix in the sidebar.
+        // The session header is also used to verify navigation and dictation.
+        let suffix=", rename session"
+        for e in nodes {
+            let label=text(e)
+            if label.hasSuffix(suffix) {
+                let title=String(label.dropLast(suffix.count))
+                if !title.isEmpty && !result.contains(where: {$0.title==title}) {
+                    result.append(Session(title:title,state:"Open"))
+                }
+            }
+        }
+        return result
     }
     func press(_ e: AXUIElement) -> Bool {
         if let enabled=value(e,kAXEnabledAttribute) as? Bool, !enabled { return false }
@@ -102,7 +115,25 @@ final class ClaudeAccess {
             _=await navigationClick(sidebar[0],app:app)
             try? await Task.sleep(nanoseconds:300_000_000)
         }
-        let matches=nodes().filter { e in value(e,kAXRoleAttribute) as? String == kAXButtonRole && states.contains(where:{text(e)==$0+" "+title}) }
+        let matches=nodes().filter { e in
+            guard value(e,kAXRoleAttribute) as? String == kAXButtonRole else {return false}
+            let label=text(e)
+            if states.contains(where:{label==$0+" "+title}) {return true}
+            // Fork/draft rows may use a different status prefix. Require the
+            // matching session menu in the same row, not a broad title search.
+            guard label==title || label.hasSuffix(" "+title),
+                  let parent=value(e,kAXParentAttribute),
+                  CFGetTypeID(parent)==AXUIElementGetTypeID(),
+                  let siblings=value(parent as! AXUIElement,kAXChildrenAttribute) as? [AXUIElement] else {return false}
+            var row=siblings
+            var index=0
+            while index<row.count && index<40 {
+                let node=row[index];index+=1
+                if text(node)=="More options for "+title {return true}
+                if let children=value(node,kAXChildrenAttribute) as? [AXUIElement] {row.append(contentsOf:children)}
+            }
+            return false
+        }
         guard matches.count==1 else { return "Session missing or ambiguous. Open Claude’s Code sidebar and refresh." }
         guard await navigationClick(matches[0],app:app) else {return "Claude session is obscured or off-screen. No click sent."}
         for _ in 0..<10 {

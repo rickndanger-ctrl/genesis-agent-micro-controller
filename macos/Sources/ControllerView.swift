@@ -6,7 +6,7 @@ struct MainView: View {
  @State private var selectedKey=0
  @State private var section=0
  private let accent=Color(red:0.61,green:0.36,blue:0.96)
- private let keyColors:[Color]=[Color(red:0.20,green:0.47,blue:0.96),Color(red:0.61,green:0.36,blue:0.96),Color(red:0.94,green:0.32,blue:0.61),Color(red:1,green:0.60,blue:0.20),Color(red:0.19,green:0.78,blue:0.47),Color(red:0.16,green:0.77,blue:0.87)]
+ private let keyColors:[Color]=[0x3478f6,0x9b5cf6,0xf0529c,0xff9933,0x30c778,0x29c4de].map { rgb in Color(red:Double((rgb>>16)&255)/255,green:Double((rgb>>8)&255)/255,blue:Double(rgb&255)/255) }
  private let panel=Color(red:0.065,green:0.085,blue:0.12)
  func stateColor(_ state:String)->Color {
   switch state {case "Working","Running":return .blue;case "Awaiting input","Needs input":return .orange;case "Something went wrong":return .red;case "Unread":return .green;case "Idle":return .purple;default:return .gray}
@@ -50,7 +50,7 @@ struct MainView: View {
     HStack {Circle().fill(.green.opacity(model.mode=="Claude" ? 1:0.2)).frame(width:6,height:6);Text("GENESIS  /  CONTROL DECK").font(.system(size:9,weight:.bold,design:.monospaced)).tracking(1);Spacer();Image(systemName:"cable.connector").foregroundStyle(.secondary)}
     LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:10),count:3),spacing:10) {
      ForEach(0..<6,id:\.self) {i in
-      Button {selectedKey=i} label:{VStack(spacing:9) {HStack {Circle().fill(stateColor(model.slotState(i))).frame(width:7,height:7);Spacer();Text("C\(i+1)").font(.system(size:11,weight:.bold,design:.monospaced))};Text(model.slotLabel(i)).font(.system(size:11,weight:.medium)).lineLimit(2).frame(maxWidth:.infinity,minHeight:30,alignment:.leading)}.padding(11).frame(height:94).background(keyColors[i].opacity(selectedKey==i ? 0.25:0.09)).cornerRadius(11).overlay(RoundedRectangle(cornerRadius:11).stroke(keyColors[i].opacity(selectedKey==i ? 1:0.35),lineWidth:selectedKey==i ? 2:1))}.buttonStyle(.plain).accessibilityLabel("Configure C\(i+1)")
+      Button {selectedKey=i} label:{VStack(spacing:9) {HStack {Circle().fill(keyColors[i]).frame(width:7,height:7);Spacer();Text("C\(i+1)").font(.system(size:11,weight:.bold,design:.monospaced))};Text(model.slotLabel(i)).font(.system(size:11,weight:.medium)).lineLimit(2).frame(maxWidth:.infinity,minHeight:30,alignment:.leading)}.padding(11).frame(height:94).background(keyColors[i].opacity(selectedKey==i ? 0.25:0.09)).cornerRadius(11).overlay(RoundedRectangle(cornerRadius:11).stroke(keyColors[i].opacity(selectedKey==i ? 1:0.35),lineWidth:selectedKey==i ? 2:1))}.buttonStyle(.plain).accessibilityLabel("Configure C\(i+1)")
      }
     }
     HStack {
@@ -75,7 +75,7 @@ struct MainView: View {
      ForEach(model.knownTitles,id:\.self){Text($0).tag($0)}
     }.labelsHidden().frame(maxWidth:.infinity)
     }
-    Label(model.slotState(selectedKey),systemImage:"circle.fill").font(.caption).foregroundStyle(stateColor(model.slotState(selectedKey)))
+    Label(model.slotState(selectedKey),systemImage:"circle.fill").font(.caption).foregroundStyle(keyColors[selectedKey])
     Button(model.slotActions[selectedKey]=="chat" ? "Open C\(selectedKey+1)" : "Run C\(selectedKey+1)"){model.selectSlot(selectedKey)}.buttonStyle(.borderedProminent).disabled(model.mode != "Claude" || (model.slotActions[selectedKey]=="chat" && model.slots[selectedKey].isEmpty) || model.selecting)
     Button("Refresh sessions",systemImage:"arrow.clockwise"){model.discoverSessions()}
     Divider()

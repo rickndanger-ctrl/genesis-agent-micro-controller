@@ -68,3 +68,7 @@ Read [AGENT_SETUP.md](AGENT_SETUP.md), [build instructions](docs/BUILD.md), and 
 ## Verification
 
 This project was tested on one Genesis Mini and one Apple Silicon Mac. The personal build's physical navigation, display, matrix, and Claude dictation were confirmed interactively. Public packaging changes (portable identity, app bundle identity, installer) are build/test verified; a fresh second-device install has not been physically validated. Release is a preview.
+
+### Claude dictation and forked chats
+
+In Claude dictation settings, turn **Hold to record OFF**. The controller uses one click to start and another to stop. For a fork missing from the assignment list, open it in Claude and click Refresh sessions. Keep its sidebar entry visible when switching back to it.
