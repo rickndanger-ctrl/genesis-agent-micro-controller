@@ -76,3 +76,7 @@ In Claude dictation settings, turn **Hold to record OFF**. The controller uses o
 ### Completion lights and bell
 
 Version 0.4.2 adds working/finished detection for the open Claude fork and a short completion bell. Keep that chat open for the Stop/Send fallback. The bell follows the controller’s Sound ON/OFF setting; the matrix keeps the chat’s assigned color. Upgrade the app and flash the included firmware to enable both fixes.
+
+### Quiet working animation
+
+Version 0.4.3 spins for the first 30 seconds of a job, then shows three dim dots that pulse slowly in the chat’s color. Completion retains the ripple and optional bell. Applies to Claude and Codex; flash the included firmware to upgrade.

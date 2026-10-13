@@ -10,6 +10,7 @@
 #include "Completion.h"
 #include "MatrixAnimation.h"
 #include "CompletionBell.h"
+#include "WorkingAnimation.h"
 #include "SlotNavigation.h"
 #include "FrameDecoder.h"
 #include "BoardConfig.h"
@@ -58,6 +59,7 @@ Preferences preferences;
 AttentionState attention;
 CompletionState completion;
 MatrixAnimation matrixAnimation;
+WorkingAnimation workingAnimation;
 SlotNavigation codexNavigation;
 uint32_t completionCount = 0;
 uint32_t testCount=0, matrixFrameCount=0;
@@ -152,7 +154,7 @@ void switchControllerApp() {
   heldAgent=-1;knobGesture=KnobGesture{};codexGesture=CodexGesture{};
   mode=Agents;
 claudeMode=!claudeMode;claudeSeen=false;hostSeen=false;lastHost=0;selected=0;agentMenuIndex=0;actionIndex=0;
-memset(slotColor,0,sizeof(slotColor));attention=AttentionState{};completion=CompletionState{};beeping=false;completionRinging=false;testing=false;
+memset(slotColor,0,sizeof(slotColor));attention=AttentionState{};completion=CompletionState{};workingAnimation=WorkingAnimation{};beeping=false;completionRinging=false;testing=false;
 if(!claudeMode) {memcpy(slotColor,codexColor,sizeof(slotColor));memcpy(slotBrightness,codexBrightness,sizeof(slotBrightness));}
 JsonDocument notice;notice["m"]="genesis.input";notice["p"]["k"]="MODE";notice["p"]["act"]=1;notice["p"]["mode"]=claudeMode?"claude":"codex";sendJson(notice);paintNeeded=true;
 }
@@ -170,7 +172,7 @@ void handleMessage(const char *bytes, size_t size) {
   JsonDocument reply; reply["id"] = request["id"];
   if (!strcmp(method,"device.status")) {
     auto result = reply["result"].to<JsonObject>();
-    result["version"] = "v0.2.16-genesis";
+    result["version"] = "v0.2.18-genesis";
     result["profile_index"] = 0; result["layer_index"] = 1;
     result["controller_mode"] = claudeMode?"claude":"codex";
     result["adapter"] = "Genesis Mini USB prototype";
@@ -206,7 +208,7 @@ void handleMessage(const char *bytes, size_t size) {
     if(params["test_alert"]|false) startTest();
     reply["result"]["ok"]=1;
   } else if (!strcmp(method,"sys.version")) {
-    reply["result"]["version"] = "v0.2.16-genesis";
+    reply["result"]["version"] = "v0.2.18-genesis";
   } else if (!strcmp(method,"v.oai.thstatus") || !strcmp(method,"genesis.claude.status")) {
     bool fromClaude=!strcmp(method,"genesis.claude.status");
     if(!fromClaude && params.is<JsonArray>()) {
@@ -385,7 +387,7 @@ void loop() {
   static bool previousReady=false;
   bool ready=hid.ready();if(ready!=previousReady) {paintNeeded=true;previousReady=ready;if(!ready){hostSeen=false;completion=CompletionState{};}}
   if(claudeMode && claudeSeen && millis()-lastClaude>6000) {claudeSeen=false;memset(slotColor,0,sizeof(slotColor));completion=CompletionState{};paintNeeded=true;}
-  if(!ready) {beeping=false;completionRinging=false;}
+  if(!ready) {beeping=false;completionRinging=false;workingAnimation=WorkingAnimation{};}
   updateBuzzer();
   if(testing && millis()-testStarted>=3000) {testing=false;paintNeeded=true;}
   if(millis()-painted>60) {
@@ -404,7 +406,7 @@ void loop() {
     if(ready && hostSeen && completedSlot>=0 && !testing) c=keyColors[completedSlot];
     pixel.setPixelColor(0,c);pixel.show();
     bool working=false;int workingSlot=-1;
-    for(int i=0;i<6;++i) if(slotBrightness[i]>0 && slotColor[i]==0x304ffe) {working=true;workingSlot=i;}
+    for(int i=0;i<6;++i) {bool busy=slotBrightness[i]>0 && slotColor[i]==0x304ffe;workingAnimation.update(i,busy,millis());if(busy) {working=true;workingSlot=i;}}
     if(slotBrightness[selected%6]>0 && slotColor[selected%6]==0x304ffe) workingSlot=selected%6;
     if(working || completedSlot>=0 || attentionMask() || testing) matrixAnimation.wake(millis());
     matrix.setBrightness(testing?64:45);
@@ -416,9 +418,9 @@ void loop() {
       for(unsigned y=0;y<5;++y) for(unsigned x=0;x<5;++x)
         matrix.setPixelColor(y*5+x,MatrixAnimation::dim(keyColors[completedSlot],MatrixAnimation::replyLevel(x,y,elapsed)));
     } else if(working) {
-      // A faster orbit identifies the working chat; attention still takes priority.
+      // Spin for the first 30 seconds of each job, then breathe three dim dots in the same hue.
       for(unsigned y=0;y<5;++y) for(unsigned x=0;x<5;++x)
-        matrix.setPixelColor(y*5+x,MatrixAnimation::dim(keyColors[workingSlot],MatrixAnimation::idleLevel(x,y,millis()*2)));
+        matrix.setPixelColor(y*5+x,MatrixAnimation::dim(keyColors[workingSlot],(workingAnimation.spinning(workingSlot,millis())?MatrixAnimation::idleLevel(x,y,millis()*2):WorkingAnimation::quietLevel(x,y,millis()))));
     } else if(!matrixAnimation.asleep(millis())) {
       uint32_t elapsed=millis()-matrixAnimation.lastActivity;
       for(unsigned y=0;y<5;++y) for(unsigned x=0;x<5;++x)

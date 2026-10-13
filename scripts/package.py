@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import hashlib,json,pathlib,shutil,subprocess
 ROOT=pathlib.Path(__file__).resolve().parents[1]
-VERSION='0.4.2-preview'
+VERSION='0.4.3-preview'
 DIST=ROOT/'dist';stage=DIST/f'Genesis-Agent-Micro-Controller-v{VERSION}'
 if stage.exists():shutil.rmtree(stage)
 stage.mkdir(parents=True)
